@@ -1,5 +1,9 @@
 # VLM Fine-Tuning Results
 
+## Tecnology Used
+
+- Unsloth lora vlm sft
+
 ## Baseline vs. Fine-tuned Model
 
 | Metric                     | Baseline | Fine-tuned | Improvement |
