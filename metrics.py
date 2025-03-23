@@ -6,6 +6,12 @@ from PIL import Image
 from tqdm import tqdm  # for progress visualization
 import difflib            # for flexible sequence matching
 import re                 
+from datasets import load_dataset
+
+dataset = load_dataset("Aditya-Khedekar/SarvamAI-VLM-dataset")
+test_dataset = dataset['test']  # Access the test split with 29 samples
+print(f"Found {len(test_dataset)} test images")
+
 
 
 def clean_text(text, preserve_newlines=False):
@@ -43,9 +49,9 @@ def compute_sequence_accuracy(gt_text, pred_text, threshold=0.95):
 # ---------------------------
 
 ## CHANGE THIS TO UPLOADED MODEL (LORA_MODEL_V2)
-# model_name="/content/drive/MyDrive/lora_model_V2",
+model_name="/content/drive/MyDrive/lora_model_V2"
 
-model_name = "Aditya-Khedekar/SarvamAI-VLM"  
+# model_name = "Aditya-Khedekar/SarvamAI-VLM"  
 model, tokenizer = FastVisionModel.from_pretrained(
     model_name=model_name,
     max_seq_length=2048,
@@ -56,9 +62,9 @@ model.eval()
 FastVisionModel.for_inference(model)  # Enable inference mode
 
 # Define test folder and list test images
-test_folder = "dataset/test"  # adjust to your test folder path
-test_images = [os.path.join(test_folder, f) for f in os.listdir(test_folder) if f.endswith(".jpg")]
-print(f"Found {len(test_images)} test images")
+# test_folder = "dataset/test"  # adjust to your test folder path
+# test_images = [os.path.join(test_folder, f) for f in os.listdir(test_folder) if f.endswith(".jpg")]
+# print(f"Found {len(test_images)} test images")
 
 # Ground truth dictionary: keys are image filenames; values are the correct text.
 # (In practice, you might load these from a file.)
@@ -97,33 +103,45 @@ ground_truth = {
     "india_news_p000146.jpg": "Original from\nUNIVERSITY OF VIRGINIA\n\nDigitized by Google\n\na |boob-pdgasn ssaoz.e/Buo'isnuityyey mmm//3dyqy =f =paztiThtp-a,boog \u2018utewog aT ANd\n\u20ac9L06T9OOX\" EAN//ZOZ/JOU\" aL pueYy{pYy//:sdy1y / IWD ZE'60 6GE-ZO-SZOZ YO pazessuag"
 }
 
-if len(ground_truth) != len(test_images):
-    print(f"Warning: Ground truth has {len(ground_truth)} entries, but found {len(test_images)} images. Update ground_truth accordingly.")
+# if len(ground_truth) != len(test_images):
+#     print(f"Warning: Ground truth has {len(ground_truth)} entries, but found {len(test_images)} images. Update ground_truth accordingly.")
 
-# ---------------------------
-# Step 2: Run Baseline Inference & Clean Text
-# ---------------------------
 extracted_texts = {}
-for image_path in tqdm(test_images, desc="Processing test images"):
+
+for idx, sample in tqdm(enumerate(test_dataset), desc="Processing test images", total=len(test_dataset)):
     try:
-        image = Image.open(image_path).convert("RGB")
-        prompt = "Extract all text from the provided image."  # the prompt for text extraction
+        image = sample['image']  # This is a PIL image in the dataset
+        image_filename = f"image_{idx}.jpg"  # Create a dummy filename for tracking
+        
+        # Extract the ground truth text from the dataset
+        ground_truth_text = sample['text']
+        
+        prompt = "Extract all text from the provided image."
         messages = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": prompt}]}]
         input_text = tokenizer.apply_chat_template(messages, add_generation_prompt=True)
+        
         # Tokenize text and image; move tensors to GPU
         inputs = tokenizer(text=input_text, images=image, return_tensors="pt").to("cuda")
         with torch.no_grad():
             outputs = model.generate(**inputs, max_new_tokens=500)
+        
         # Decode and remove the prompt from the output
         extracted = tokenizer.decode(outputs[0], skip_special_tokens=True).replace(prompt, "").strip()
+        
         # Clean up the extracted text
         cleaned = clean_text(extracted)
-        image_name = os.path.basename(image_path)
-        extracted_texts[image_name] = cleaned
+        extracted_texts[image_filename] = cleaned
+        
+        # Store ground truth text for metrics calculation
+        if 'ground_truth' not in locals():
+            ground_truth = {}
+        ground_truth[image_filename] = ground_truth_text
+        
         # Debug print: show first 100 characters
-        print(f"Extracted from {image_name}: {cleaned[:100]}...")
+        print(f"Extracted from {image_filename}: {cleaned[:100]}...")
+        
     except Exception as e:
-        print(f"Error processing {image_path}: {e}")
+        print(f"Error processing image {idx}: {e}")
 
 # ---------------------------
 # Step 3: Compute Metrics
@@ -138,11 +156,8 @@ for image_name in ground_truth:
         print(f"Skipping {image_name}: No extracted text")
         continue
     
-    # gt_text = ground_truth[image_name].lower().strip()
-    # pred_text = extracted_texts[image_name].lower().strip()
-
     gt_text = clean_text(ground_truth[image_name]).lower().strip()
-    pred_text = extracted_texts[image_name].lower().strip()  # Already cleaned
+    pred_text = extracted_texts[image_name].lower().strip()
     
     # Compute WER and CER using jiwer
     wer_score = wer(gt_text, pred_text)
@@ -172,7 +187,7 @@ print(f"Average Flexible Sequence Accuracy: {avg_flex_seq:.4f} (fraction of line
 # ---------------------------
 # Step 5: Save Results
 # ---------------------------
-with open("baseline_metrics.txt", "w") as f:
+with open("Fine_tuned_metrics.txt", "w") as f:
     f.write(f"Average WER: {avg_wer:.4f}\n")
     f.write(f"Average CER: {avg_cer:.4f}\n")
     f.write(f"Average Exact Sequence Accuracy: {avg_exact_seq:.4f}\n")
