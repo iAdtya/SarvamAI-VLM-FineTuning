@@ -35,6 +35,7 @@ The fine-tuning dramatically improved all metrics:
 
 ## Project Directory Structure
 
+```makdown
 SarvamAI-VLM-FineTuning/
 ├── baseline_metrics_v2.txt # Baseline model evaluation metrics
 ├── Fine_tune_V2.ipynb # Main fine-tuning notebook (v2)
@@ -56,3 +57,5 @@ SarvamAI-VLM-FineTuning/
 ├── README.md # Model card
 ├── chat_template.json # Chat template for inference
 └── tokenizer.json # Tokenizer configuration
+
+```
