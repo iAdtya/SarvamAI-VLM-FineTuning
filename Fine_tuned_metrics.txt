@@ -1,0 +1,4 @@
+Average WER: 0.3940
+Average CER: 0.3442
+Average Exact Sequence Accuracy: 0.5357
+Average Flexible Sequence Accuracy: 0.6137
