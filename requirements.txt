@@ -1,0 +1,17 @@
+unsloth
+huggingface_hub
+tqdm
+wandb
+Pillow
+pytesseract
+datasets
+jiwer
+editdistance
+nltk
+torch
+transformers
+peft
+trl
+accelerate
+bitsandbytes
+xformers

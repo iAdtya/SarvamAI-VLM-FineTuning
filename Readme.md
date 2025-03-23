@@ -19,6 +19,11 @@ The fine-tuning dramatically improved all metrics:
 - **Exact Accuracy**: Improved from virtually no exact matches (0.47%) to over 53%
 - **Flexible Accuracy**: Improved from 1.43% to 61.37% of outputs having ≥95% similarity
 
+## RUN
+
+- Create Env
+- pip install -r requirements.txt
+
 ## MODEL AND DATASET
 
 - this model is not merged properly so wont work if performed inference on it
